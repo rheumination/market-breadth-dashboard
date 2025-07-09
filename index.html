@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Breadth Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .top-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .market-hours {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .market-hours h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+        }
+
+        .current-time {
+            font-size: 1.8em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #93c5fd;
+        }
+
+        .market-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .market-open {
+            background: rgba(34, 197, 94, 0.3);
+            color: #86efac;
+        }
+
+        .market-closed {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .market-lunch {
+            background: rgba(251, 191, 36, 0.3);
+            color: #fde68a;
+        }
+
+        .hours-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .api-status {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        .api-connected {
+            color: #86efac;
+        }
+
+        .api-disconnected {
+            color: #fca5a5;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .data-table th {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .data-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .exchange-cell {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            font-size: 1.1em;
+            width: 150px;
+        }
+
+        .exchange-info {
+            font-size: 0.8em;
+            color: #cbd5e1;
+            margin-top: 5px;
+            font-weight: normal;
+        }
+
+        .indicator-cell {
+            background: rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .indicator-cell:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.02);
+        }
+
+        .indicator-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .indicator-status {
+            font-size: 0.9em;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: 500;
+        }
+
+        .bullish {
+            background: rgba(34, 197, 94, 0.3);
+            color: #86efac;
+        }
+
+        .bearish {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .neutral {
+            background: rgba(251, 191, 36, 0.3);
+            color: #fde68a;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            max-width: 300px;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 100%;
+            margin-bottom: 10px;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 8px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .interpretation-sidebar {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .interpretation-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #e2e8f0;
+            text-align: center;
+        }
+
+        .interpretation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .interpretation-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #60a5fa;
+        }
+
+        .interpretation-item h4 {
+            margin-bottom: 8px;
+            color: #93c5fd;
+        }
+
+        .interpretation-item p {
+            font-size: 0.9em;
+            line-height: 1.4;
+            color: #cbd5e1;
+        }
+
+        .last-updated {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            .top-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .interpretation-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-table {
+                font-size: 0.9em;
+            }
+            
+            .indicator-value {
+                font-size: 1.8em;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Market Breadth Dashboard</h1>
+        
+        <div class="top-section">
+            <div class="market-hours">
+                <h3>🕐 Market Hours (EST)</h3>
+                <div class="current-time" id="current-time"></div>
+                <div class="market-status" id="market-status">Market Closed</div>
+                <div class="hours-grid">
+                    <div><strong>Pre-Market:</strong> 4:00 AM - 9:30 AM</div>
+                    <div><strong>Regular:</strong> 9:30 AM - 4:00 PM</div>
+                    <div><strong>After-Hours:</strong> 4:00 PM - 8:00 PM</div>
+                    <div><strong>Bond Close:</strong> 3:00 PM</div>
+                </div>
+            </div>
+            
+            <div class="api-status">
+                <h3>📡 Data Status</h3>
+                <div id="api-status-text" class="api-disconnected">Demo Mode - Simulated Data</div>
+                <div style="margin-top: 10px; font-size: 0.9em;">
+                    <div>Last Updated: <span id="last-updated-time">Loading...</span></div>
+                    <div>Update Frequency: Every 5 seconds</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Exchange</th>
+                    <th>TICK</th>
+                    <th>TRIN</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="exchange-cell">
+                        <div>🏛️ NYSE</div>
+                        <div class="exchange-info">Large-cap, established companies</div>
+                    </td>
+                    <td class="indicator-cell" data-tooltip="NYSE TICK measures the number of stocks trading on upticks vs downticks. Above +500 is bullish, below -500 is bearish. Extreme readings (+1000/-1000) often signal reversals.">
+                        <div class="indicator-value" id="nyse-tick-value">-245</div>
+                        <div class="indicator-status bearish" id="nyse-tick-status">Bearish</div>
+                        <div class="tooltip">NYSE TICK measures the number of stocks trading on upticks vs downticks. Above +500 is bullish, below -500 is bearish. Extreme readings (+1000/-1000) often signal reversals.</div>
+                    </td>
+                    <td class="indicator-cell" data-tooltip="NYSE TRIN compares advancing/declining stocks to volume. Below 1.0 is bullish, above 1.0 is bearish. Extreme readings (>2.0 or <0.5) may indicate oversold/overbought conditions.">
+                        <div class="indicator-value" id="nyse-trin-value">1.35</div>
+                        <div class="indicator-status bearish" id="nyse-trin-status">Bearish</div>
+                        <div class="tooltip">NYSE TRIN compares advancing/declining stocks to volume. Below 1.0 is bullish, above 1.0 is bearish. Extreme readings (>2.0 or <0.5) may indicate oversold/overbought conditions.</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="exchange-cell">
+                        <div>💻 NASDAQ</div>
+                        <div class="exchange-info">Tech-heavy, growth companies</div>
+                    </td>
+                    <td class="indicator-cell" data-tooltip="NASDAQ TICK measures upticks vs downticks for NASDAQ stocks. Above +200 is bullish, below -200 is bearish. Generally has smaller ranges than NYSE due to different market structure.">
+                        <div class="indicator-value" id="nasdaq-tick-value">+127</div>
+                        <div class="indicator-status neutral" id="nasdaq-tick-status">Neutral</div>
+                        <div class="tooltip">NASDAQ TICK measures upticks vs downticks for NASDAQ stocks. Above +200 is bullish, below -200 is bearish. Generally has smaller ranges than NYSE due to different market structure.</div>
+                    </td>
+                    <td class="indicator-cell" data-tooltip="NASDAQ TRIN works the same as NYSE TRIN but for NASDAQ stocks. Below 1.0 is bullish, above 1.0 is bearish. Often more volatile than NYSE TRIN due to tech sector characteristics.">
+                        <div class="indicator-value" id="nasdaq-trin-value">0.89</div>
+                        <div class="indicator-status bullish" id="nasdaq-trin-status">Bullish</div>
+                        <div class="tooltip">NASDAQ TRIN works the same as NYSE TRIN but for NASDAQ stocks. Below 1.0 is bullish, above 1.0 is bearish. Often more volatile than NYSE TRIN due to tech sector characteristics.</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="interpretation-sidebar">
+            <div class="interpretation-title">📊 Quick Reference Guide</div>
+            <div class="interpretation-grid">
+                <div class="interpretation-item">
+                    <h4>TICK Signals</h4>
+                    <p>Extreme positive readings (+1000 NYSE, +400 NASDAQ) often mark short-term tops. Extreme negative readings (-1000 NYSE, -400 NASDAQ) often mark short-term bottoms.</p>
+                </div>
+                <div class="interpretation-item">
+                    <h4>TRIN Signals</h4>
+                    <p>Readings above 2.0 suggest panic selling (potential bounce). Readings below 0.5 suggest euphoric buying (potential pullback). Best used as contrarian indicator.</p>
+                </div>
+                <div class="interpretation-item">
+                    <h4>Market Divergence</h4>
+                    <p>When NYSE and NASDAQ show different signals, it may indicate sector rotation or mixed market sentiment. Tech vs value rotation often shows up here first.</p>
+                </div>
+                <div class="interpretation-item">
+                    <h4>Timing Usage</h4>
+                    <p>TICK is best for intraday timing. TRIN is better for identifying short-term overbought/oversold conditions. Use together for confirmation.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-updated">
+            Dashboard updates every 5 seconds during demo mode
+        </div>
+    </div>
+
+    <script>
+        // Market hours and status
+        function updateMarketStatus() {
+            const now = new Date();
+            const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+            const hours = easternTime.getHours();
+            const minutes = easternTime.getMinutes();
+            const currentTime = hours * 60 + minutes;
+            
+            // Convert to 12-hour format for display
+            const displayTime = easternTime.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'America/New_York'
+            });
+            
+            document.getElementById('current-time').textContent = displayTime;
+            
+            const statusElement = document.getElementById('market-status');
+            const isWeekday = easternTime.getDay() >= 1 && easternTime.getDay() <= 5;
+            
+            if (!isWeekday) {
+                statusElement.textContent = '🔴 Market Closed (Weekend)';
+                statusElement.className = 'market-status market-closed';
+                return;
+            }
+            
+            // Market times in minutes since midnight
+            const preMarketStart = 4 * 60; // 4:00 AM
+            const marketOpen = 9 * 60 + 30; // 9:30 AM
+            const lunchStart = 12 * 60; // 12:00 PM
+            const lunchEnd = 13 * 60; // 1:00 PM
+            const bondClose = 15 * 60; // 3:00 PM
+            const marketClose = 16 * 60; // 4:00 PM
+            const afterHoursEnd = 20 * 60; // 8:00 PM
+            
+            if (currentTime < preMarketStart) {
+                statusElement.textContent = '🔴 Market Closed';
+                statusElement.className = 'market-status market-closed';
+            } else if (currentTime < marketOpen) {
+                statusElement.textContent = '🟡 Pre-Market Trading';
+                statusElement.className = 'market-status market-lunch';
+            } else if (currentTime < lunchStart) {
+                statusElement.textContent = '🟢 Market Open (Morning)';
+                statusElement.className = 'market-status market-open';
+            } else if (currentTime < lunchEnd) {
+                statusElement.textContent = '🟡 Lunch Hour (Light Volume)';
+                statusElement.className = 'market-status market-lunch';
+            } else if (currentTime < bondClose) {
+                statusElement.textContent = '🟢 Market Open (Afternoon)';
+                statusElement.className = 'market-status market-open';
+            } else if (currentTime < marketClose) {
+                statusElement.textContent = '🟢 Market Open (Bonds Closed)';
+                statusElement.className = 'market-status market-open';
+            } else if (currentTime < afterHoursEnd) {
+                statusElement.textContent = '🟡 After-Hours Trading';
+                statusElement.className = 'market-status market-lunch';
+            } else {
+                statusElement.textContent = '🔴 Market Closed';
+                statusElement.className = 'market-status market-closed';
+            }
+        }
+
+        // Update indicators with simulated data
+        function updateIndicators() {
+            // NYSE TICK (-2000 to +2000)
+            const nyseTickValue = Math.floor(Math.random() * 4000) - 2000;
+            updateTick('nyse-tick', nyseTickValue, 500);
+            
+            // NYSE TRIN (0.3 to 3.0)
+            const nyseTrinValue = (Math.random() * 2.7 + 0.3).toFixed(2);
+            updateTrin('nyse-trin', nyseTrinValue);
+            
+            // NASDAQ TICK (-1000 to +1000)
+            const nasdaqTickValue = Math.floor(Math.random() * 2000) - 1000;
+            updateTick('nasdaq-tick', nasdaqTickValue, 200);
+            
+            // NASDAQ TRIN (0.3 to 3.0)
+            const nasdaqTrinValue = (Math.random() * 2.7 + 0.3).toFixed(2);
+            updateTrin('nasdaq-trin', nasdaqTrinValue);
+            
+            // Update timestamp
+            const now = new Date();
+            document.getElementById('last-updated-time').textContent = now.toLocaleTimeString();
+        }
+
+        function updateTick(prefix, value, threshold) {
+            const valueElement = document.getElementById(`${prefix}-value`);
+            const statusElement = document.getElementById(`${prefix}-status`);
+            
+            valueElement.textContent = value >= 0 ? `+${value}` : value;
+            
+            if (value > threshold) {
+                statusElement.textContent = 'Bullish';
+                statusElement.className = 'indicator-status bullish';
+            } else if (value < -threshold) {
+                statusElement.textContent = 'Bearish';
+                statusElement.className = 'indicator-status bearish';
+            } else {
+                statusElement.textContent = 'Neutral';
+                statusElement.className = 'indicator-status neutral';
+            }
+        }
+
+        function updateTrin(prefix, value) {
+            const valueElement = document.getElementById(`${prefix}-value`);
+            const statusElement = document.getElementById(`${prefix}-status`);
+            
+            valueElement.textContent = value;
+            
+            if (value < 1.0) {
+                statusElement.textContent = 'Bullish';
+                statusElement.className = 'indicator-status bullish';
+            } else if (value > 1.5) {
+                statusElement.textContent = 'Bearish';
+                statusElement.className = 'indicator-status bearish';
+            } else {
+                statusElement.textContent = 'Neutral';
+                statusElement.className = 'indicator-status neutral';
+            }
+        }
+
+        // Tooltip functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipCells = document.querySelectorAll('.indicator-cell');
+            
+            tooltipCells.forEach(cell => {
+                const tooltip = cell.querySelector('.tooltip');
+                
+                cell.addEventListener('mouseenter', function() {
+                    tooltip.classList.add('show');
+                });
+                
+                cell.addEventListener('mouseleave', function() {
+                    tooltip.classList.remove('show');
+                });
+            });
+        });
+
+        // Initialize and set intervals
+        updateMarketStatus();
+        updateIndicators();
+        
+        setInterval(updateMarketStatus, 1000); // Update every second
+        setInterval(updateIndicators, 5000); // Update every 5 seconds
+    </script>
+</body>
+</html>
